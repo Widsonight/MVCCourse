@@ -1,5 +1,6 @@
-﻿using System.ComponentModel.DataAnnotations;
-using UseCases;
+﻿using CoreBusiness;
+using System.ComponentModel.DataAnnotations;
+using WebApp.Factory.Interfaces;
 
 namespace WebApp.ViewModels.Validations
 {
@@ -17,11 +18,16 @@ namespace WebApp.ViewModels.Validations
                 }
                 else
                 {
-                    var getProductByIdUseCase = validationContext.GetService(typeof(IViewSelectedProductUseCase)) as IViewSelectedProductUseCase;
+                    var getProductByIdUseCase = validationContext.GetService(typeof(IProductClient)) as IProductClient;
 
                     if (getProductByIdUseCase != null)
                     {
-                        var product = getProductByIdUseCase.Execute(salesViewModel.SelectedProductId);
+                        Product product= null;
+                        Task.Run(async () =>
+                        {
+                            product = await getProductByIdUseCase.GetProduct(salesViewModel.SelectedProductId);
+                        }).Wait();
+
                         if (product != null)
                         {
                             if (product.Quantity < salesViewModel.QuantityToSell)
@@ -31,7 +37,7 @@ namespace WebApp.ViewModels.Validations
                         {
                             return new ValidationResult("The selected product doesn't exist.");
                         }
-                    }                    
+                    }
                 }
             }
 

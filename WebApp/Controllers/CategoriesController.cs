@@ -1,54 +1,40 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using UseCases.CategoriesUseCases;
 using CoreBusiness;
 using Microsoft.AspNetCore.Authorization;
+using WebApp.Factory.Interfaces;
+using Microsoft.AspNetCore.OutputCaching;
 
 namespace WebApp.Controllers
 {
-    [Authorize(Policy = "Inventory")]
     public class CategoriesController : Controller
     {
-        private readonly IViewCategoriesUseCase viewCategoriesUseCase;
-        private readonly IViewSelectedCategoryUseCase viewSelectedCategoryUseCase;
-        private readonly IEditCategoryUseCase editCategoryUseCase;
-        private readonly IAddCategoryUseCase addCategoryUseCase;
-        private readonly IDeleteCategoryUseCase deleteCategoryUseCase;
-
-        public CategoriesController(
-            IViewCategoriesUseCase viewCategoriesUseCase,
-            IViewSelectedCategoryUseCase viewSelectedCategoryUseCase,
-            IEditCategoryUseCase editCategoryUseCase,
-            IAddCategoryUseCase addCategoryUseCase,
-            IDeleteCategoryUseCase deleteCategoryUseCase)
+        private readonly ICategoriesClient _categoriesClient;
+        public CategoriesController(ICategoriesClient categoriesClient)
         {
-            this.viewCategoriesUseCase = viewCategoriesUseCase;
-            this.viewSelectedCategoryUseCase = viewSelectedCategoryUseCase;
-            this.editCategoryUseCase = editCategoryUseCase;
-            this.addCategoryUseCase = addCategoryUseCase;
-            this.deleteCategoryUseCase = deleteCategoryUseCase;
+            _categoriesClient = categoriesClient;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var categories = viewCategoriesUseCase.Execute();
+            var categories = await _categoriesClient.GetCategories();
             return View(categories);
         }
 
-        public IActionResult Edit(int? id) 
+        public async Task<IActionResult> Edit(int? id)
         {
             ViewBag.Action = "edit";
 
-            var category = viewSelectedCategoryUseCase.Execute(id.HasValue?id.Value:0);
+            var category = await _categoriesClient.GetCategorie(id.HasValue ? id.Value : 0);
 
             return View(category);
         }
 
         [HttpPost]
-        public IActionResult Edit(Category category)
+        public async Task<IActionResult> Edit(Category category)
         {
             if (ModelState.IsValid)
             {
-                editCategoryUseCase.Execute(category.CategoryId, category);
+                await _categoriesClient.EditCategorie(category);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -64,11 +50,11 @@ namespace WebApp.Controllers
         }
 
         [HttpPost]
-        public IActionResult Add(Category category)
+        public async Task<IActionResult> Add(Category category)
         {
             if (ModelState.IsValid)
             {
-                addCategoryUseCase.Execute(category);
+                await _categoriesClient.AddCategorie(category);
                 return RedirectToAction(nameof(Index));
             }
 
@@ -76,9 +62,9 @@ namespace WebApp.Controllers
             return View(category);
         }
 
-        public IActionResult Delete(int categoryId)
+        public async Task<IActionResult> Delete(int categoryId)
         {
-            deleteCategoryUseCase.Execute(categoryId);
+            await _categoriesClient.DeleteCategorie(categoryId);
             return RedirectToAction(nameof(Index));
         }
 

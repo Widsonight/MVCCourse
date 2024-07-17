@@ -1,21 +1,26 @@
-﻿using Microsoft.AspNetCore.Mvc;
-using UseCases;
+﻿using CoreBusiness;
+using Microsoft.AspNetCore.Mvc;
+using WebApp.Factory.Interfaces;
 
 namespace WebApp.ViewComponents
 {
     [ViewComponent]
     public class TransactionsViewComponent : ViewComponent
     {
-        private readonly IGetTodayTransactionsUseCase getTodayTransactionsUseCase;
+        private readonly ITransactionsClient _transactionsClient;
 
-        public TransactionsViewComponent(IGetTodayTransactionsUseCase getTodayTransactionsUseCase)
+        public TransactionsViewComponent(ITransactionsClient transactionsClient)
         {
-            this.getTodayTransactionsUseCase = getTodayTransactionsUseCase;
+            _transactionsClient = transactionsClient;
         }
 
-        public IViewComponentResult Invoke(string userName)
+        public IViewComponentResult Invoke(string username)
         {
-            var transactions = getTodayTransactionsUseCase.Execute(userName);
+            IEnumerable<Transaction> transactions= new List<Transaction>();
+            Task.Run(async () =>
+            {
+                transactions = await _transactionsClient.GetTransactionsToday(username);
+            }).Wait();
 
             return View(transactions);
         }

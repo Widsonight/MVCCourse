@@ -1,69 +1,52 @@
-using Microsoft.EntityFrameworkCore;
-using Plugins.DataStore.InMemory;
-using Plugins.DataStore.SQL;
-using System.Net.Mime;
-using System.Text;
-using UseCases;
-using UseCases.CategoriesUseCases;
-using UseCases.DataStorePluginInterfaces;
-using UseCases.ProductsUseCases;
 using Microsoft.AspNetCore.Identity;
-using WebApp.Data;
+using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Serialization;
+using WebApp.Factory;
+using WebApp.Factory.Interfaces;
+using Auth__Classic;
+using WebApi.Data;
+using IdentityModel.Client;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddDbContext<AccountContext>(options =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MarketManagement"));
-});
 
-builder.Services.AddDbContext<MarketContext>(options =>
-{
-    options.UseSqlServer(builder.Configuration.GetConnectionString("MarketManagement"));
-});
-
-builder.Services.AddDefaultIdentity<IdentityUser>(options => options.SignIn.RequireConfirmedAccount = true).AddEntityFrameworkStores<AccountContext>();
 
 builder.Services.AddRazorPages();
 builder.Services.AddControllersWithViews();
 
-builder.Services.AddAuthorization(options =>
+//builder.Services.AddAuthorization(options =>
+//{
+//    //options.AddPolicy("Inventory", p => p.RequireClaim("Position", "Inventory"));
+//    //options.AddPolicy("Cashiers", p => p.RequireClaim("Position", "Cashier"));
+//});
+
+
+builder.Services.AddHttpClient <ICategoriesClient,CategoriesClient> (option =>
 {
-    options.AddPolicy("Inventory", p => p.RequireClaim("Position", "Inventory"));
-    options.AddPolicy("Cashiers", p => p.RequireClaim("Position", "Cashier"));
+    option.BaseAddress = new Uri($"{builder.Configuration.GetSection("API").GetValue<string>("BaseAddress")}/Categories");
 });
 
-if (builder.Environment.IsEnvironment("QA"))
+builder.Services.AddHttpClient<IProductClient, ProductClient>(option =>
 {
-    builder.Services.AddSingleton<ICategoryRepository, CategoriesInMemoryRepository>();
-    builder.Services.AddSingleton<IProductRepository, ProductsInMemoryRepository>();
-    builder.Services.AddSingleton<ITransactionRepository, TransactionsInMemoryRepository>();
-}
-else
+    option.BaseAddress = new Uri($"{builder.Configuration.GetSection("API").GetValue<string>("BaseAddress")}/Products");
+});
+
+builder.Services.AddHttpClient<ISalesClient, SalesClient>(option =>
 {
-    builder.Services.AddTransient<ICategoryRepository, CategorySQLRepository>();
-    builder.Services.AddTransient<IProductRepository, ProductSQLRepository>();
-    builder.Services.AddTransient<ITransactionRepository, TransactionSQLRepository>();
-}
+    option.BaseAddress = new Uri($"{builder.Configuration.GetSection("API").GetValue<string>("BaseAddress")}/Sales");
+});
+
+builder.Services.AddHttpClient<ITransactionsClient, TransactionsClient>(option =>
+{
+    option.BaseAddress = new Uri($"{builder.Configuration.GetSection("API").GetValue<string>("BaseAddress")}/Transactions");
+});
 
 
-builder.Services.AddTransient<IViewCategoriesUseCase, ViewCategoriesUseCase>();
-builder.Services.AddTransient<IViewSelectedCategoryUseCase, ViewSelectedCategoryUseCase>();
-builder.Services.AddTransient<IEditCategoryUseCase, EditCategoryUseCase>();
-builder.Services.AddTransient<IAddCategoryUseCase, AddCategoryUseCase>();
-builder.Services.AddTransient<IDeleteCategoryUseCase, DeleteCategoryUseCase>();
+builder.Services.AddHttpClient<ITokenClient, TokenFacClient>(option =>
+{
+    option.BaseAddress = new Uri($"https://localhost:5001");
+});
 
-builder.Services.AddTransient<IViewProductsUseCase, ViewProductsUseCase>();
-builder.Services.AddTransient<IAddProductUseCase, AddProductUseCase>();
-builder.Services.AddTransient<IEditProductUseCase, EditProductUseCase>();
-builder.Services.AddTransient<IViewProductsInCategoryUseCase, ViewProductsInCategoryUseCase>();
-builder.Services.AddTransient<IDeleteProductUseCase, DeleteProductUseCase>();
-builder.Services.AddTransient<IViewSelectedProductUseCase, ViewSelectedProductUseCase>();
-builder.Services.AddTransient<ISellProductUseCase, SellProductUseCase>();
-
-builder.Services.AddTransient<IRecordTransactionUseCase, RecordTransactionUseCase>();
-builder.Services.AddTransient<IGetTodayTransactionsUseCase, GetTodayTransactionsUseCase>();
-builder.Services.AddTransient<ISearchTransactionsUseCase, SearchTransactionsUseCase>();
 
 var app = builder.Build();
 

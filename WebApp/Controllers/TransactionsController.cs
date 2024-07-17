@@ -1,37 +1,32 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using CoreBusiness;
 using WebApp.ViewModels;
-using UseCases;
 using Microsoft.AspNetCore.Authorization;
+using WebApp.Factory.Interfaces;
 
 namespace WebApp.Controllers
 {
-    [Authorize]
     public class TransactionsController : Controller
     {
-        private readonly ISearchTransactionsUseCase searchTransactionsUseCase;
+        private readonly ITransactionsClient _transactionClient;
 
-        public TransactionsController(ISearchTransactionsUseCase searchTransactionsUseCase )
+        public TransactionsController(ITransactionsClient transactionsClient)
         {
-            this.searchTransactionsUseCase = searchTransactionsUseCase;
+            _transactionClient = transactionsClient;
         }
 
         public IActionResult Index()
         {
-            TransactionsViewModel transactionsViewModel = new TransactionsViewModel();
+            ViewModels.TransactionsViewModel transactionsViewModel = new ViewModels.TransactionsViewModel();
             return View(transactionsViewModel);
         }
 
-        public IActionResult Search(TransactionsViewModel transactionsViewModel)
+        public async Task<IActionResult> Search(ViewModels.TransactionsViewModel transactionsViewModel)
         {
-            var transactions = searchTransactionsUseCase.Execute(
-                transactionsViewModel.CashierName??string.Empty,
-                transactionsViewModel.StartDate,
-                transactionsViewModel.EndDate);
+            var transactions = await _transactionClient.GetTransactions(transactionsViewModel);
 
-            transactionsViewModel.Transactions = transactions;
 
-            return View("Index", transactionsViewModel);
+            return View("Index", transactions);
         }
     }
 }

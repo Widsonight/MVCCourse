@@ -1,8 +1,8 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace CoreBusiness
+namespace WebApi.ViewModel
 {
-    public class Category
+    public class CategoryView
     {
         public int CategoryId { get; set; }
 
@@ -10,7 +10,5 @@ namespace CoreBusiness
         public string Name { get; set; } = string.Empty;
         public string? Description { get; set; } = string.Empty;
 
-        // navigation property for ef core
-        public virtual List<Product>? Products { get; set; }
     }
 }

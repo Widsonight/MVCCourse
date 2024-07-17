@@ -1,103 +1,83 @@
 ﻿using CoreBusiness;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using UseCases;
-using UseCases.CategoriesUseCases;
-using UseCases.DataStorePluginInterfaces;
-using UseCases.ProductsUseCases;
+using WebApp.Factory.Interfaces;
 using WebApp.ViewModels;
 
 namespace WebApp.Controllers
 {
-    [Authorize(Policy = "Inventory")]
     public class ProductsController : Controller
     {
-        private readonly IAddProductUseCase addProductUseCase;
-        private readonly IEditProductUseCase editProductUseCase;
-        private readonly IDeleteProductUseCase deleteProductUseCase;
-        private readonly IViewSelectedProductUseCase viewSelectedProductUseCase;
-        private readonly IViewProductsUseCase viewProductsUseCase;
-        private readonly IViewCategoriesUseCase viewCategoriesUseCase;
-        
-        public ProductsController(
-            IAddProductUseCase addProductUseCase,
-            IEditProductUseCase editProductUseCase,
-            IDeleteProductUseCase deleteProductUseCase,
-            IViewSelectedProductUseCase viewSelectedProductUseCase,
-            IViewProductsUseCase viewProductsUseCase,
-            IViewCategoriesUseCase viewCategoriesUseCase)
+        private readonly IProductClient _productClient;
+        private readonly ICategoriesClient _categoriesClient;
+        public ProductsController(IProductClient productClient,ICategoriesClient categoriesClient)
         {
-            this.addProductUseCase = addProductUseCase;
-            this.editProductUseCase = editProductUseCase;
-            this.deleteProductUseCase = deleteProductUseCase;
-            this.viewSelectedProductUseCase = viewSelectedProductUseCase;
-            this.viewProductsUseCase = viewProductsUseCase;
-            this.viewCategoriesUseCase = viewCategoriesUseCase;            
+            _productClient = productClient;
+            _categoriesClient = categoriesClient;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var products = viewProductsUseCase.Execute(loadCategory: true);
+            var products = await _productClient.GetProducts();
             return View(products);
         }
 
-        public IActionResult Add()
+        public async Task<IActionResult> Add()
         {
             ViewBag.Action = "add";
 
             var productViewModel = new ProductViewModel
             {
-                Categories = viewCategoriesUseCase.Execute()
+                Categories = await _categoriesClient.GetCategories()
             };
 
             return View(productViewModel);
         }
 
         [HttpPost]
-        public IActionResult Add(ProductViewModel productViewModel)
+        public async Task<IActionResult> Add(ProductViewModel productViewModel)
         {
             if (ModelState.IsValid)
             {
-                addProductUseCase.Execute(productViewModel.Product);                
+                await _productClient.AddProduct(productViewModel.Product);
                 return RedirectToAction(nameof(Index));
             }
 
             ViewBag.Action = "add";
-            productViewModel.Categories = viewCategoriesUseCase.Execute();
+            productViewModel.Categories = await _categoriesClient.GetCategories(); ;
             return View(productViewModel);
         }
 
-        public IActionResult Edit(int id)
+        public async Task<IActionResult> Edit(int id)
         {
             ViewBag.Action = "edit";
-
             var productViewModel = new ProductViewModel
             {
-                Product = viewSelectedProductUseCase.Execute(id)??new Product(),
-                Categories = viewCategoriesUseCase.Execute()
+                Product = await _productClient.GetProduct(id) ?? new Product(),
+                Categories = await _categoriesClient.GetCategories()
             };
 
             return View(productViewModel);
         }
 
         [HttpPost]
-        public IActionResult Edit(ProductViewModel productViewModel)
+        public async Task<IActionResult> Edit(ProductViewModel productViewModel)
         {
             if (ModelState.IsValid)
             {
-                editProductUseCase.Execute(productViewModel.Product.ProductId, productViewModel.Product);
+                await _productClient.EditProduct(productViewModel.Product);
                 return RedirectToAction(nameof(Index));
             }
 
             ViewBag.Action = "edit";
-            productViewModel.Categories = viewCategoriesUseCase.Execute();
+            productViewModel.Categories = await _categoriesClient.GetCategories();
             return View(productViewModel);
         }
 
-        public IActionResult Delete(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            deleteProductUseCase.Execute(id);
+            await _productClient.DeleteProduct(id);
             return RedirectToAction(nameof(Index));
-        }        
+        }
     }
 }

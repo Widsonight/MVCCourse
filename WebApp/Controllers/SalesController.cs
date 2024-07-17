@@ -1,68 +1,58 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using CoreBusiness;
 using WebApp.ViewModels;
-using UseCases.CategoriesUseCases;
-using UseCases;
 using Microsoft.AspNetCore.Authorization;
-using UseCases.ProductsUseCases;
+using WebApp.Factory.Interfaces;
 
 namespace WebApp.Controllers
 {
-    [Authorize(Policy = "Cashiers")]
     public class SalesController : Controller
     {
-        private readonly IViewCategoriesUseCase viewCategoriesUseCase;
-        private readonly IViewSelectedProductUseCase viewSelectedProductUseCase;
-        private readonly ISellProductUseCase sellProductUseCase;
-        private readonly IViewProductsInCategoryUseCase viewProductsInCategoryUseCase;
+        private readonly ISalesClient _salesClient;
+        private readonly IProductClient _productClient;
+        private readonly ICategoriesClient _categoriesClient;
 
-        public SalesController(IViewCategoriesUseCase viewCategoriesUseCase,
-            IViewSelectedProductUseCase viewSelectedProductUseCase,
-            ISellProductUseCase sellProductUseCase,
-            IViewProductsInCategoryUseCase viewProductsInCategoryUseCase)
+        public SalesController(ISalesClient salesClient, IProductClient productClient, ICategoriesClient categoriesClient)
         {
-            this.viewCategoriesUseCase = viewCategoriesUseCase;
-            this.viewSelectedProductUseCase = viewSelectedProductUseCase;
-            this.sellProductUseCase = sellProductUseCase;
-            this.viewProductsInCategoryUseCase = viewProductsInCategoryUseCase;
+            _salesClient = salesClient;
+            _productClient = productClient;
+            _categoriesClient = categoriesClient;
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var salesViewModel = new SalesViewModel
+            var salesViewModel = new ViewModels.SalesViewModel
             {
-                Categories = viewCategoriesUseCase.Execute()              
+                Categories = await _categoriesClient.GetCategories()
             };
             return View(salesViewModel);
         }
 
-        public IActionResult SellProductPartial(int productId)
+        public async Task<IActionResult> SellProductPartial(int productId)
         {
-            var product = viewSelectedProductUseCase.Execute(productId);
+            var product = await _productClient.GetProduct(productId);
             return PartialView("_SellProduct", product);
         }
 
-        public IActionResult Sell(SalesViewModel salesViewModel)
+        public async Task<IActionResult> Sell(ViewModels.SalesViewModel salesViewModel)
         {
             if (ModelState.IsValid)
             {
                 // Sell the product
-                sellProductUseCase.Execute(
-                    "cashier1",
-                    salesViewModel.SelectedProductId,
-                    salesViewModel.QuantityToSell);                
+                await _salesClient.AddSalesViewModel(
+                    salesViewModel);
             }
 
-            var product = viewSelectedProductUseCase.Execute(salesViewModel.SelectedProductId);
+            var product = await _productClient.GetProduct(salesViewModel.SelectedProductId);
             salesViewModel.SelectedCategoryId = (product?.CategoryId == null) ? 0 : product.CategoryId.Value;
-            salesViewModel.Categories = viewCategoriesUseCase.Execute();
-            
+            salesViewModel.Categories = await _categoriesClient.GetCategories();
+
             return View("Index", salesViewModel);
         }
 
-        public IActionResult ProductsByCategoryPartial(int categoryId)
+        public async Task<IActionResult> ProductsByCategoryPartial(int categoryId)
         {
-            var products = viewProductsInCategoryUseCase.Execute(categoryId);
+            var products = await _salesClient.GetProductById(categoryId);
 
             return PartialView("_Products", products);
         }
